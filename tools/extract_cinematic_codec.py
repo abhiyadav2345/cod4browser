@@ -20,10 +20,6 @@ def main() -> None:
             parts = PurePosixPath(member.name).parts
             if not parts or parts[0] != prefix or ".." in parts:
                 raise ValueError(f"Unexpected FFmpeg archive path: {member.name}")
-            # The codec build disables FFmpeg's own test targets. The full pinned
-            # source archive is still retained separately for redistribution.
-            if len(parts) > 1 and parts[1] == "tests":
-                continue
             target = args.destination.joinpath(*parts)
             if member.isdir():
                 target.mkdir(parents=True, exist_ok=True)

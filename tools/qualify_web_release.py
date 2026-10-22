@@ -176,7 +176,14 @@ def qualify(receipt, results, site, source, revision, output, dependency_sources
     shutil.copytree(dependency_sources, output / "dependency-sources")
     with zipfile.ZipFile(source) as archive:
         for name in ("serve_web.py", "qualify_web_release.py", "check_source_archive.py", "package_web_sources.py", "start-local.sh"):
-            (output / name).write_bytes(archive.read("tools/" + name))
+            payload = archive.read("tools/" + name)
+            if name == "start-local.sh":
+                # Git for Windows can export CRLF in a source archive. POSIX sh
+                # treats the trailing CR as a character in commands and flags.
+                payload = payload.replace(b"\r\n", b"\n")
+                if b"\r" in payload:
+                    raise ValueError("Unexpected carriage return in local launcher")
+            (output / name).write_bytes(payload)
     (output / "start-local.cmd").write_text(
         '@echo off\ncd /d "%~dp0"\npython qualify_web_release.py verify .\n'
         'if errorlevel 1 exit /b 1\npython serve_web.py --directory site --port 8000\n',

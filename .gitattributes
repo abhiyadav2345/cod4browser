@@ -1,5 +1,6 @@
 # Legacy native SDKs remain in upstream history/local checkouts, but must not
 # enter browser source releases. Native reference builds use local dependencies.
+/tools/start-local.sh text eol=lf
 /deps/binklib export-ignore
 /deps/msslib export-ignore
 /deps/steamsdk export-ignore

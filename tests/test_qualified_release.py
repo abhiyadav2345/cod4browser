@@ -102,6 +102,17 @@ class QualificationTests(unittest.TestCase):
         self.assertEqual(files_in(self.output / "site"), files_in(self.site))
         self.assertEqual(files_in(self.output / "dependency-sources"), files_in(self.dependency_sources))
 
+    def test_shell_launcher_from_crlf_source_runs_on_posix(self):
+        launcher = (ROOT / "tools/start-local.sh").read_bytes()
+        self.rewrite_source("tools/start-local.sh", launcher.replace(b"\n", b"\r\n"))
+        self.receipt["source"] = file_identity(self.source)
+        self.make()
+        packaged = (self.output / "start-local.sh").read_bytes()
+        self.assertNotIn(b"\r", packaged)
+        if sys.platform != "win32":
+            subprocess.run(["sh", "-n", str(self.output / "start-local.sh")], check=True)
+        verify(self.output)
+
     def test_source_body_changes_and_omissions_cannot_reuse_receipt(self):
         original = self.source.read_bytes()
         for content in (b"int synthetic = 2;\n", None):

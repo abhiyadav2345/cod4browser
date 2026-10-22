@@ -4,6 +4,7 @@ import http.client
 import hashlib
 import io
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -57,7 +58,7 @@ class QualificationTests(unittest.TestCase):
             archive.comment = self.revision.encode()
             for name in ("LICENSE", "CMakeLists.txt", "scripts/web/CMakeLists.txt", "scripts/web/reverb/CMakeLists.txt", "package.json",
                          "package-lock.json", "tools/web_toolchain.json", "tools/web_dependencies.json",
-                         "tools/serve_web.py", "tools/qualify_web_release.py", "tools/check_source_archive.py", "tools/package_web_sources.py"):
+                         "tools/serve_web.py", "tools/qualify_web_release.py", "tools/check_source_archive.py", "tools/package_web_sources.py", "tools/start-local.sh"):
                 archive.writestr(name, (ROOT / name).read_bytes())
             archive.writestr("tools/cinematic_codec.json", json.dumps(codec))
             archive.writestr("src/synthetic.cpp", "int synthetic = 1;\n")
@@ -266,8 +267,14 @@ class QualificationTests(unittest.TestCase):
                                   (self.output, "Synthetic replacement package"),
                                   (previous, "Synthetic package test")):
             verify(package)
+            command = (["sh", str(package / "start-local.sh")]
+                       if sys.platform != "win32" else
+                       [sys.executable, str(package / "serve_web.py"), "--directory", str(package / "site"), "--port", str(port)])
+            environment = os.environ.copy()
+            environment["KISAK_PORT"] = str(port)
             server = subprocess.Popen(
-                [sys.executable, str(package / "serve_web.py"), "--directory", str(package / "site"), "--port", str(port)],
+                command,
+                env=environment,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             try:

@@ -175,14 +175,16 @@ def qualify(receipt, results, site, source, revision, output, dependency_sources
     shutil.copyfile(source, output / "source.zip")
     shutil.copytree(dependency_sources, output / "dependency-sources")
     with zipfile.ZipFile(source) as archive:
-        for name in ("serve_web.py", "qualify_web_release.py", "check_source_archive.py", "package_web_sources.py"):
+        for name in ("serve_web.py", "qualify_web_release.py", "check_source_archive.py", "package_web_sources.py", "start-local.sh"):
             (output / name).write_bytes(archive.read("tools/" + name))
     (output / "start-local.cmd").write_text(
-        '@echo off\ncd /d "%~dp0"\npython serve_web.py --directory site --port 8000\n', encoding="utf8")
+        '@echo off\ncd /d "%~dp0"\npython qualify_web_release.py verify .\n'
+        'if errorlevel 1 exit /b 1\npython serve_web.py --directory site --port 8000\n',
+        encoding="utf8")
     (output / "README.txt").write_text(
         "Synthetic-platform-qualified KisakCOD package; not a qualified single-player alpha.\n"
-        "Requires Python 3.11+ and a supported browser. Verify: python qualify_web_release.py verify .\n"
-        "Start: start-local.cmd (Windows), or python serve_web.py --directory site --port 8000\n"
+        "Requires Python 3.11+ and a supported browser. Launchers verify the package before serving.\n"
+        "Start: start-local.cmd (Windows), or sh start-local.sh (macOS/Linux).\n"
         "Open http://127.0.0.1:8000 every time. Keep that host, port and browser profile on updates.\n"
         "No network is needed to serve this package. Game files must be locally supplied by their owner.\n"
         "Corresponding project source and build instructions: source.zip. Public dependency source and\n"

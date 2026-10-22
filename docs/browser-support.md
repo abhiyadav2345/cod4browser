@@ -31,8 +31,9 @@ specific release can never satisfy the feature gate.
 ## Local package contract
 
 The selected distribution milestone is a complete local-server package.
-After extracting it, run `python qualify_web_release.py verify .`, then
-`start-local.cmd` on Windows or `python serve_web.py --directory site --port 8000`.
+After extracting it, run `start-local.cmd` on Windows or `sh start-local.sh`
+on macOS/Linux. Both launchers verify package consistency before starting the
+local server. You can also run `python qualify_web_release.py verify .` alone.
 Python 3.11 or newer must already be installed. Open `http://127.0.0.1:8000`
 in the same browser profile on every launch. The server binds loopback and serves only
 the generated site; it needs no remote service. Hosted cold-offline startup

@@ -33,7 +33,11 @@ foreach ($dependency in @($definition.ffmpeg, $definition.make)) {
     if (-not (Test-Path -LiteralPath $sentinel)) {
         Write-Host "Extracting cinematic dependency: $archive"
         New-Item -ItemType Directory -Force -Path $destination | Out-Null
-        & tar -xf $archive -C $destination
+        if ($dependency -eq $definition.ffmpeg) {
+            & python (Join-Path $PSScriptRoot 'extract_cinematic_codec.py') $archive $destination $definition.ffmpeg.version
+        } else {
+            & tar -xf $archive -C $destination
+        }
         if ($LASTEXITCODE -ne 0) { throw 'Failed to extract cinematic build dependency.' }
     }
 }

@@ -3,6 +3,7 @@ import {
     isCinematicPath,
     isSupportedImportedPath,
     getInstallProfile,
+    getOptionalBaseAssets,
     getRequiredAssets,
     REQUIRED_ASSETS,
 } from "./asset_profile.mjs";
@@ -238,6 +239,19 @@ async function entriesFromDirectoryHandle(directory, module)
             requirement.path,
             requireFileLike(await handle.getFile(), requirement.path),
         );
+    }
+    for (const { path } of getOptionalBaseAssets()) {
+        let handle;
+        try {
+            handle = await directoryCache.get("main").getFileHandle(path.slice("main/".length));
+        } catch (error) {
+            if (error?.name === "NotFoundError") continue;
+            throw error;
+        }
+        if (!handle || handle.kind !== "file" || typeof handle.getFile !== "function") {
+            throw importError("INVALID_FILE", `${path} is not a readable browser file handle.`);
+        }
+        entries.set(path, requireFileLike(await handle.getFile(), path));
     }
 
     const languageDirectory = directoryCache.get(`zone/${language}`);
@@ -477,7 +491,10 @@ function validateSelectedEntries(entries, language)
             throw importError("INVALID_SIZE", "The selected installation is too large.");
         }
     }
-    for (const requirement of getRequiredAssets(language)) {
+    for (const requirement of [
+        ...getRequiredAssets(language),
+        ...getOptionalBaseAssets().filter(({ path }) => entries.has(path)),
+    ]) {
         if (!entries.has(requirement.path))
             throw importError("MISSING_MANIFEST", `The selected installation is missing ${requirement.path}.`);
         const file = requireFileLike(entries.get(requirement.path), requirement.path);
@@ -617,7 +634,10 @@ async function probeInstallEntries(module, entries, expectedLanguage = null)
     let zoneCount = 0;
     const availableSinglePlayerZones = [];
     const requiredFastfiles = new Set();
-    for (const requirement of getRequiredAssets(language)) {
+    for (const requirement of [
+        ...getRequiredAssets(language),
+        ...getOptionalBaseAssets().filter(({ path }) => entries.has(path)),
+    ]) {
         try {
             if (requirement.kind === "iwd") {
                 const result = await probeIwd(module, entries.get(requirement.path));

@@ -2,6 +2,18 @@ const BASE_ARCHIVES = Object.freeze(Array.from(
     { length: 14 },
     (_, index) => `main/iw_${String(index).padStart(2, "0")}.iwd`,
 ));
+// The last two archives were added with the multiplayer map updates. Original
+// single-player disc installations contain iw_00 through iw_11.
+const REQUIRED_BASE_ARCHIVES = Object.freeze(BASE_ARCHIVES.slice(0, 12));
+const OPTIONAL_BASE_ARCHIVES = Object.freeze(BASE_ARCHIVES.slice(12));
+
+export function getOptionalBaseAssets()
+{
+    return OPTIONAL_BASE_ARCHIVES.map((path) => Object.freeze({
+        path, minimumSize: 100, maximumSize: 512 * 1024 * 1024,
+        label: "Optional update archive", kind: "iwd",
+    }));
+}
 // The existing Wasm localization probe decides which language names the
 // engine supports. This platform profile only constructs safe file paths.
 export function getInstallProfile(language = "english")
@@ -14,7 +26,8 @@ export function getInstallProfile(language = "english")
         product: "offline-single-player",
         language,
         map: "killhouse",
-        baseArchives: BASE_ARCHIVES,
+        baseArchives: REQUIRED_BASE_ARCHIVES,
+        optionalBaseArchives: OPTIONAL_BASE_ARCHIVES,
         localizedArchives: Object.freeze(Array.from({ length: 7 },
             (_, index) => `main/localized_${language}_iw${String(index).padStart(2, "0")}.iwd`)),
         startupZones: Object.freeze(["code_post_gfx", "ui", "common"].map(
@@ -34,7 +47,7 @@ export function getRequiredAssets(language = "english")
         label: "Localization configuration",
         kind: "localization",
     }),
-    ...BASE_ARCHIVES.map((path) => Object.freeze({
+    ...REQUIRED_BASE_ARCHIVES.map((path) => Object.freeze({
         path, minimumSize: 100, maximumSize: 512 * 1024 * 1024,
         label: "Base asset archive", kind: "iwd",
     })),

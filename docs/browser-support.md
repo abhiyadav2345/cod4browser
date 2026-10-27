@@ -39,6 +39,15 @@ in the same browser profile on every launch. The server binds loopback and serve
 the generated site; it needs no remote service. Hosted cold-offline startup
 is not supported and there is no service worker.
 
+For an English original PC disc on macOS, copy the contents of `Setup/Data`
+from the mounted disc or disc image into a private local folder. Select that
+folder in the browser so `localization.txt`, `main/`, and `zone/` are directly
+inside it. The original disc contains `main/iw_00.iwd` through `iw_11.iwd`;
+later update archives `iw_12.iwd` and `iw_13.iwd` are optional. The importer
+validates them when present. Keep the disc data local and allow enough browser
+storage for the copy. This prepares game data without running the Windows
+installer; browser import and gameplay still require separate validation.
+
 Keep the previous verified package when updating. Stop the server and all game
 tabs, verify the replacement in a separate directory, then start it on the
 same host/port. A failed verification leaves the old directory intact. Rollback

@@ -47,7 +47,7 @@ void __cdecl LocalConvertQuatToMat(const DObjAnimMat *mat, float (*axis)[3],
     {
 #if defined(KISAK_WEB)
         Web_Log(WebLogLevel::Error,
-            "Invalid animation quaternion: source=%s model=%s detail=%d quat=(%g,%g,%g,%g) trans=(%g,%g,%g) weight=%g",
+            "Invalid animation quaternion: source=%s model=%s detail=%d quat=(%g,%g,%g,%g) trans=(%g,%g,%g) weight=%g\n",
             source ? source : "unknown", obj ? DObjGetName(obj) : "unknown", detail,
             mat->quat[0], mat->quat[1], mat->quat[2], mat->quat[3],
             mat->trans[0], mat->trans[1], mat->trans[2], mat->transWeight);

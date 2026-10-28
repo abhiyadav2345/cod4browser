@@ -4,6 +4,9 @@
 #include <universal/profile.h>
 #include "xanim.h"
 #include "xanim_calc.h"
+#if defined(KISAK_WEB)
+#include <web/web_anim_diagnostics.h>
+#endif
 
 void __cdecl DObjCalcSkel(const DObj_s *obj, int *partBits)
 {
@@ -40,6 +43,9 @@ void __cdecl DObjCalcSkel(const DObj_s *obj, int *partBits)
 
     if (bFinished)
     {
+#if defined(KISAK_WEB)
+        Web_LogInvalidDObjMats(obj, "cached skeleton", partBits);
+#endif
         return;
     }
 
@@ -69,6 +75,9 @@ void __cdecl DObjCalcSkel(const DObj_s *obj, int *partBits)
     }
 
     iassert(!(*pos));
+#if defined(KISAK_WEB)
+    Web_LogInvalidDObjMats(obj, "after skeleton composition", partBits);
+#endif
     for (boneIndexa = 0; boneIndexa < obj->numBones; ++boneIndexa)
     {
         //if ((skel->partBits.anim[boneIndexa >> 5] & (0x80000000 >> (boneIndexa & 0x1F))) != 0)

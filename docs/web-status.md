@@ -1,6 +1,6 @@
 # Web product status and priorities
 
-Updated 2026-09-09. Target: offline single-player using real Kisak systems,
+Updated 2026-10-28. Target: offline single-player using real Kisak systems,
 ultimately matching original Steam COD4 (2007). This records implementation and
 remaining work; it does not certify the current checkout. See
 [ownership](architecture.md), [test results](web-test-inventory.md) and
@@ -53,6 +53,12 @@ light run passed lighting/shadow/clear/recovery but failed its final positive
 DObj post-pose diagnostic; the optional Gate 3 fixture expects older camera-only
 geometry and times out. Keep assertions intact. See
 [test limits](web-test-inventory.md#known-qualification-limits).
+
+On 2026-10-27, a user screenshot from a macOS original-disc run showed
+`R_RenderScene: invalid cgame view command` after selecting the last mission.
+The exact map and rejected view field were not captured, so no map status is
+changed. The renderer now reports the map and failing validation category while
+keeping the same rejection behavior; the cause still requires a retail replay.
 
 Seven headed production windows recorded on 2026-09-05 covered 1280×720 and
 1920×1080, Killhouse context recovery, advancing game/audio clocks and 978.5 MiB

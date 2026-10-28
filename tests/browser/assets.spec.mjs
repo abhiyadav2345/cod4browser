@@ -9,7 +9,7 @@ import {
     SYNTHETIC_LOCALIZATION,
 } from "./install_fixture.mjs";
 import { REQUIRED_ASSETS } from "../../web/asset_store.mjs";
-import { getRequiredAssets } from "../../web/asset_profile.mjs";
+import { getOptionalBaseAssets, getRequiredAssets } from "../../web/asset_profile.mjs";
 import { createSyntheticIwd } from "./synthetic_iwd.mjs";
 
 const SYNTHETIC_MAP_FASTFILE_SIZE = createSyntheticWorldInventoryFastfile().length;
@@ -114,7 +114,8 @@ test("imports synthetic files through the portable picker and restores them afte
     expect(await page.evaluate(
         () => globalThis.__KISAKCOD_WEB__.assets.manifest.files
             .map(({ path: filePath }) => filePath).sort(),
-    )).toEqual(REQUIRED_ASSETS.map(({ path: assetPath }) => assetPath).sort());
+    )).toEqual([...REQUIRED_ASSETS, ...getOptionalBaseAssets()]
+        .map(({ path: assetPath }) => assetPath).sort());
 
     await page.reload();
     await waitForEngine(page);
@@ -176,7 +177,10 @@ test("imports synthetic files through the portable picker and restores them afte
 test("uses the native directory picker boundary and admits German SP fastfiles and movies", async ({ page }, testInfo) => {
     const directory = await createInstallDirectory(testInfo, "native-picker-install", { language: "german" });
     const fastfileBytes = Array.from(createSyntheticFastfileHeader());
-    const descriptors = await Promise.all(getRequiredAssets("german").map(async (requirement) => ({
+    const descriptors = await Promise.all([
+        ...getRequiredAssets("german"),
+        ...getOptionalBaseAssets(),
+    ].map(async (requirement) => ({
         path: requirement.path,
         kind: requirement.kind,
         bytes: Array.from(await readFile(path.join(directory, requirement.path))),
@@ -408,6 +412,35 @@ test("reports the canonical filesystem error when an imported archive lacks the 
     await waitForAssets(page, "failed");
     await expect(page.locator("#asset-message")).toContainText("fileSysCheck.cfg");
     await expect(page.locator("#asset-message")).not.toContainText("[object Object]");
+});
+
+test("imports an original-disc single-player installation without later multiplayer archives", async ({ page }, testInfo) => {
+    await usePortableFolderPicker(page);
+    const directory = await createM12InstallDirectory(testInfo, "original-disc-install", {
+        omit: ["main/iw_12.iwd", "main/iw_13.iwd"],
+        primaryIwd: createSyntheticIwd([{
+            path: "fileSysCheck.cfg",
+            contents: "synthetic filesystem validation\n",
+            method: "deflate",
+        }, {
+            path: "configure_mp.csv",
+            contents: "cpu ghz,sys mb,r_fullscreen\n0,128,0\ngpu,r_fullscreen\n*,0\n",
+            method: "deflate",
+        }]),
+    });
+    await page.goto("/");
+    await waitForEngine(page);
+    await chooseDirectory(page, directory);
+    await waitForAssets(page, "ready");
+    expect(await page.evaluate(() => ({
+        archives: globalThis.__KISAKCOD_WEB__.assets.manifest.archiveProbe.archivesProbed,
+        paths: globalThis.__KISAKCOD_WEB__.assets.manifest.files.map(({ path }) => path),
+    }))).toMatchObject({
+        archives: 19,
+        paths: expect.not.arrayContaining(["main/iw_12.iwd", "main/iw_13.iwd"]),
+    });
+    await page.reload();
+    await waitForAssets(page, "ready");
 });
 
 test("offers the explicit portable picker while retaining native picker priority", async ({ page }, testInfo) => {

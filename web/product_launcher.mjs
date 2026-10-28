@@ -394,7 +394,17 @@ function renderAssetState(detail)
     document.documentElement.dataset.assetState = detail.state;
     assetControl.dataset.assetState = detail.state;
     assetStateLabel.textContent = labelForAssetState(detail.state);
-    assetMessage.textContent = detail.message;
+    if (detail.state === "empty" && location.hostname === "localhost") {
+        const canonicalAddress = new URL(location.href);
+        canonicalAddress.hostname = "127.0.0.1";
+        canonicalAddress.pathname = "/";
+        canonicalAddress.search = "";
+        canonicalAddress.hash = "";
+        assetMessage.textContent = `${detail.message}. If you imported files at ` +
+            `${canonicalAddress.href}, open that address in the same browser profile.`;
+    } else {
+        assetMessage.textContent = detail.message;
+    }
     const busy = ["checking", "selecting", "validating", "importing", "clearing"]
         .includes(detail.state);
     const pickerDisabled = busy || detail.state === "unsupported" || !assetStore;

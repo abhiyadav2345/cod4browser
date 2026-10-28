@@ -4819,8 +4819,11 @@ void __cdecl R_RenderScene(const refdef_s *refdef)
 #if KISAK_WEB_DIAGNOSTICS
     const double viewSubmitStarted = sceneProfile ? WebFrameProfile_Now() : 0.0;
 #endif
-    if (!WebRenderer_SubmitSceneView(view))
-        Com_Error(ERR_DROP, "R_RenderScene: invalid cgame view command");
+    const char *viewFailure = nullptr;
+    if (!WebRenderer_SubmitSceneView(view, &viewFailure))
+        Com_Error(ERR_DROP, "R_RenderScene: invalid cgame view command for %s (%s)",
+            view.worldName,
+            viewFailure ? viewFailure : "unknown reason");
 #if KISAK_WEB_DIAGNOSTICS
     if (sceneProfile)
         sceneProfile->sceneViewSubmitMs += WebFrameProfile_Now() - viewSubmitStarted;

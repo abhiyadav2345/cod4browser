@@ -43,7 +43,7 @@ void __cdecl LocalMatrixTransformVectorQuatTrans(const float *in, const DObjAnim
     double v12; // fp0
     float v13[20]; // [sp+50h] [-50h] BYREF
 
-    LocalConvertQuatToMat(mat, (float (*)[3])v13);
+    LocalConvertQuatToMat(mat, (float (*)[3])v13, "CG_DoBaseOriginController");
     v6 = v13[1];
     v7 = v13[4];
     v8 = v13[2];

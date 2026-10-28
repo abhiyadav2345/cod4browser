@@ -3,6 +3,9 @@
 #include "xanim_calc.h"
 #include <qcommon/qcommon.h>
 #include <universal/profile.h>
+#if defined(KISAK_WEB)
+#include <web/web_anim_diagnostics.h>
+#endif
 
 void __cdecl Short2LerpAsVec2(const __int16 *from, const __int16 *to, float frac, float *out)
 {
@@ -1675,6 +1678,9 @@ void DObjCalcAnim(const DObj_s *obj, int *partBits)
     PROF_SCOPED("DObjCalcAnim");
     iassert(obj);
     p_skel = (DSkel *)&obj->skel;
+#if defined(KISAK_WEB)
+    Web_LogInvalidDObjMats(obj, "before animation calculation", p_skel->partBits.anim.array);
+#endif
 
     for (i = 0; i < 4; ++i)
         info.animPartBits.array[i] = partBits[i];
@@ -1785,6 +1791,9 @@ LABEL_20:
             quats += 4;
         }
     }
+#if defined(KISAK_WEB)
+    Web_LogInvalidDObjMats(obj, "after animation calculation", partBits);
+#endif
 }
 
 void __cdecl XAnim_CalcDeltaForTime(const XAnimParts *anim, float time, float *rotDelta, float4 *posDelta)

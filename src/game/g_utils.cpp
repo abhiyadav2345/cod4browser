@@ -19,6 +19,10 @@
 #include <script/scr_memorytree.h>
 #include "actor_turret.h"
 #include "actor_event_listeners.h"
+#if defined(KISAK_WEB)
+#include <web/web_system.h>
+#include <cmath>
+#endif
 
 XModel *cached_models[512]{ NULL };
 
@@ -1515,11 +1519,26 @@ void __cdecl G_DObjGetWorldBoneIndexMatrix(const gentity_s *ent, int boneIndex, 
 
     G_DObjCalcBone(ent, boneIndex);
     mat = &SV_DObjGetMatrixArray(ent)[boneIndex];
+#if defined(KISAK_WEB)
+    if (!std::isfinite(mat->quat[0]) || !std::isfinite(mat->quat[1])
+        || !std::isfinite(mat->quat[2]) || !std::isfinite(mat->quat[3]))
+    {
+        const DObj_s *obj = Com_GetServerDObj(ent->s.number);
+        const char *boneName = obj && boneIndex >= 0 && boneIndex < obj->numBones
+            ? DObjGetBoneName(obj, boneIndex) : nullptr;
+        Web_Log(WebLogLevel::Error,
+            "Invalid server bone before world transform: entity=%d type=%d handler=%d model=%s bone=%d name=%s vehicle=%d pitch=%g yaw=%g\n",
+            ent->s.number, ent->s.eType, ent->handler,
+            obj ? DObjGetName(obj) : "unknown", boneIndex,
+            boneName ? boneName : "unknown", ent->scr_vehicle != nullptr,
+            ent->s.lerp.u.vehicle.gunPitch, ent->s.lerp.u.vehicle.gunYaw);
+    }
+#endif
     AnglesToAxis(ent->r.currentAngles, ent_axis);
     ent_axis[3][0] = ent->r.currentOrigin[0];
     ent_axis[3][1] = ent->r.currentOrigin[1];
     ent_axis[3][2] = ent->r.currentOrigin[2];
-    LocalConvertQuatToMat(mat, axis);
+    LocalConvertQuatToMat(mat, axis, "G_DObjGetWorldBoneIndexMatrix", nullptr, boneIndex);
     MatrixMultiply(axis, (const mat3x3&)ent_axis, (mat3x3&)*tagMat);
     MatrixTransformVector43(mat->trans, ent_axis, &(*tagMat)[9]);
 }
@@ -2261,7 +2280,7 @@ void __cdecl G_CalcTagParentAxis(gentity_s *ent, float (*parentAxis)[3])
         v10[11] = parent->r.currentOrigin[2];
         G_DObjCalcBone(parent, tagInfo->index);
         v7 = &SV_DObjGetMatrixArray(parent)[tagInfo->index];
-        LocalConvertQuatToMat(v7, v9);
+        LocalConvertQuatToMat(v7, v9, "G_CalcTagParentAxis", nullptr, tagInfo->index);
         // parentAxis is `float (*)[3]` (a pointer parameter). The previous cast
         // `(mat3x3&)parentAxis` reinterpreted the 4-byte pointer SLOT as a 36-byte
         // 3x3 matrix — MatrixMultiply then wrote 9 floats starting at the address

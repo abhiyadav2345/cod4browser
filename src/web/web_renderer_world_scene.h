@@ -83,7 +83,8 @@ struct WebRendererWorldLightTechniqueContext
 // images: those immutable resources are already retained by light index.
 bool WebRenderer_ValidatePrimaryLightFrame(
     const WebRendererPrimaryLightDesc *primaryLights,
-    std::uint32_t primaryLightCount) noexcept;
+    std::uint32_t primaryLightCount,
+    const char **failureReason = nullptr) noexcept;
 
 // Builds material/lightmap-aware portable world batches from the canonical
 // renderer-owned GfxWorld. Surface order follows Kisak's canonical lit, decal,

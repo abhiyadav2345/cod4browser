@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { deflateSync } from "node:zlib";
-import { getRequiredAssets } from "../../web/asset_profile.mjs";
+import { getOptionalBaseAssets, getRequiredAssets } from "../../web/asset_profile.mjs";
 import { createSyntheticIwd } from "./synthetic_iwd.mjs";
 
 export const SYNTHETIC_LOCALIZATION = [
@@ -803,7 +803,10 @@ export async function createInstallDirectory(
 {
     const directory = testInfo.outputPath(name);
     const omitted = new Set(omit);
-    for (const requirement of getRequiredAssets(language)) {
+    for (const requirement of [
+        ...getRequiredAssets(language),
+        ...getOptionalBaseAssets(),
+    ]) {
         if (omitted.has(requirement.path)) {
             continue;
         }

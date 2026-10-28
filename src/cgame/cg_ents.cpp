@@ -23,8 +23,12 @@
 #include <sound/snd_public.h>
 #include <sound/snd_alias_system.h>
 #include <physics/phys_preset.h>
+#if defined(KISAK_WEB)
+#include <web/web_system.h>
+#endif
 
-void __cdecl LocalConvertQuatToMat(const DObjAnimMat *mat, float (*axis)[3])
+void __cdecl LocalConvertQuatToMat(const DObjAnimMat *mat, float (*axis)[3],
+    const char *source, const DObj_s *obj, int detail)
 {
     double v4; // fp5
     double v5; // fp12
@@ -41,6 +45,17 @@ void __cdecl LocalConvertQuatToMat(const DObjAnimMat *mat, float (*axis)[3])
         || (COERCE_UNSIGNED_INT(mat->quat[2]) & 0x7F800000) == 0x7F800000
         || (COERCE_UNSIGNED_INT(mat->quat[3]) & 0x7F800000) == 0x7F800000)
     {
+#if defined(KISAK_WEB)
+        Web_Log(WebLogLevel::Error,
+            "Invalid animation quaternion: source=%s model=%s detail=%d quat=(%g,%g,%g,%g) trans=(%g,%g,%g) weight=%g\n",
+            source ? source : "unknown", obj ? DObjGetName(obj) : "unknown", detail,
+            mat->quat[0], mat->quat[1], mat->quat[2], mat->quat[3],
+            mat->trans[0], mat->trans[1], mat->trans[2], mat->transWeight);
+#else
+        (void)source;
+        (void)obj;
+        (void)detail;
+#endif
         MyAssertHandler(
             "c:\\trees\\cod3\\cod3src\\src\\cgame\\../xanim/xanim_public.h",
             434,
@@ -2322,7 +2337,7 @@ int32_t __cdecl CG_DObjGetWorldBoneMatrix(
     if (!mat)
         return 0;
 
-    LocalConvertQuatToMat(mat, tagMat);
+    LocalConvertQuatToMat(mat, tagMat, "CG_DObjGetWorldBoneMatrix", obj, boneIndex);
     Vec3Add(mat->trans, CG_GetLocalClientGlobals(0)->refdef.viewOffset, origin);
 
     return 1;
@@ -2347,7 +2362,7 @@ int32_t __cdecl CG_DObjGetWorldTagMatrix(
         return 0;
     }
 
-    LocalConvertQuatToMat(mat, tagMat);
+    LocalConvertQuatToMat(mat, tagMat, "CG_DObjGetWorldTagMatrix", obj, tagName);
     Vec3Add(mat->trans, CG_GetLocalClientGlobals(0)->refdef.viewOffset, origin);
     return 1;
 }

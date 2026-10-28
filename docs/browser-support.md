@@ -31,12 +31,22 @@ specific release can never satisfy the feature gate.
 ## Local package contract
 
 The selected distribution milestone is a complete local-server package.
-After extracting it, run `python qualify_web_release.py verify .`, then
-`start-local.cmd` on Windows or `python serve_web.py --directory site --port 8000`.
+After extracting it, run `start-local.cmd` on Windows or `sh start-local.sh`
+on macOS/Linux. Both launchers verify package consistency before starting the
+local server. You can also run `python qualify_web_release.py verify .` alone.
 Python 3.11 or newer must already be installed. Open `http://127.0.0.1:8000`
 in the same browser profile on every launch. The server binds loopback and serves only
 the generated site; it needs no remote service. Hosted cold-offline startup
 is not supported and there is no service worker.
+
+For an English original PC disc on macOS, copy the contents of `Setup/Data`
+from the mounted disc or disc image into a private local folder. Select that
+folder in the browser so `localization.txt`, `main/`, and `zone/` are directly
+inside it. The original disc contains `main/iw_00.iwd` through `iw_11.iwd`;
+later update archives `iw_12.iwd` and `iw_13.iwd` are optional. The importer
+validates them when present. Keep the disc data local and allow enough browser
+storage for the copy. This prepares game data without running the Windows
+installer; browser import and gameplay still require separate validation.
 
 Keep the previous verified package when updating. Stop the server and all game
 tabs, verify the replacement in a separate directory, then start it on the
@@ -45,6 +55,9 @@ means restarting the previous package at that origin. Changing `localhost`
 to `127.0.0.1`, changing port or using another browser/profile changes storage
 identity. No save-format migration or cross-version campaign compatibility is
 promised by replacing the shell.
+When an empty installation is opened through `localhost`, the launcher shows
+the equivalent `127.0.0.1` address so a previously imported copy is easier to
+find. It does not redirect or move browser data between origins.
 
 Browser controls and the Quit screen offer **Export stored saves**. Quit the
 game and close other game tabs first to release the home writer lease. Export

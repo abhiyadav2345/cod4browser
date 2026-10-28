@@ -14,7 +14,16 @@ if (-not (Test-Path -LiteralPath (Join-Path $toolsDirectory 'emsdk/.emscripten')
 foreach ($dependency in @($definition.ffmpeg, $definition.make)) {
     $archive = Join-Path $toolsDirectory ([Uri]$dependency.url).Segments[-1]
     if (-not (Test-Path -LiteralPath $archive)) {
-        Invoke-WebRequest -Uri $dependency.url -OutFile $archive
+        Write-Host "Downloading cinematic dependency: $($dependency.url)"
+        $partialArchive = "$archive.partial"
+        try {
+            & curl.exe --fail --location --retry 3 --connect-timeout 15 --max-time 180 `
+                --output $partialArchive $dependency.url
+            if ($LASTEXITCODE -ne 0) { throw "Dependency download failed: $($dependency.url)" }
+            Move-Item -LiteralPath $partialArchive -Destination $archive -Force
+        } finally {
+            Remove-Item -LiteralPath $partialArchive -ErrorAction SilentlyContinue
+        }
     }
     if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $dependency.sha256) {
         throw "Dependency archive hash mismatch: $archive"
@@ -22,10 +31,16 @@ foreach ($dependency in @($definition.ffmpeg, $definition.make)) {
     $destination = if ($dependency -eq $definition.make) { Join-Path $toolsDirectory 'msys-make' } else { $toolsDirectory }
     $sentinel = if ($dependency -eq $definition.make) { Join-Path $destination 'usr/bin/make.exe' } else { Join-Path $destination "ffmpeg-$($definition.ffmpeg.version)/configure" }
     if (-not (Test-Path -LiteralPath $sentinel)) {
+        Write-Host "Extracting cinematic dependency: $archive"
         New-Item -ItemType Directory -Force -Path $destination | Out-Null
-        & tar -xf $archive -C $destination
+        if ($dependency -eq $definition.ffmpeg) {
+            & python (Join-Path $PSScriptRoot 'extract_cinematic_codec.py') $archive $destination $definition.ffmpeg.version
+        } else {
+            & tar -xf $archive -C $destination
+        }
         if ($LASTEXITCODE -ne 0) { throw 'Failed to extract cinematic build dependency.' }
     }
 }
+Write-Host 'Building cinematic codec'
 & $bash (Join-Path $PSScriptRoot 'build_cinematic_codec.sh')
 if ($LASTEXITCODE -ne 0) { throw 'Cinematic codec build failed.' }

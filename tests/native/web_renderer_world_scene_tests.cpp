@@ -368,12 +368,18 @@ void TestPrimaryLightFrameAcceptsScriptedLightState()
     lights[2u].falloffShift = 1.0f / 512.0f;
     // A scripted primary light is disabled by fading its frame color to zero;
     // it remains a valid indexed spotlight with retained attenuation data.
+    const char *failureReason = "stale reason";
     assert(WebRenderer_ValidatePrimaryLightFrame(
-        lights.data(), static_cast<std::uint32_t>(lights.size())));
+        lights.data(), static_cast<std::uint32_t>(lights.size()),
+        &failureReason));
+    assert(failureReason == nullptr);
 
     lights[2u].radius = 0.0f;
     assert(!WebRenderer_ValidatePrimaryLightFrame(
-        lights.data(), static_cast<std::uint32_t>(lights.size())));
+        lights.data(), static_cast<std::uint32_t>(lights.size()),
+        &failureReason));
+    assert(failureReason && std::strcmp(failureReason,
+        "invalid primary light radius, falloff or cone") == 0);
     lights[2u].radius = 256.0f;
     lights[2u].cosHalfFovInner = lights[2u].cosHalfFovOuter;
     assert(!WebRenderer_ValidatePrimaryLightFrame(

@@ -55,6 +55,9 @@ means restarting the previous package at that origin. Changing `localhost`
 to `127.0.0.1`, changing port or using another browser/profile changes storage
 identity. No save-format migration or cross-version campaign compatibility is
 promised by replacing the shell.
+When an empty installation is opened through `localhost`, the launcher shows
+the equivalent `127.0.0.1` address so a previously imported copy is easier to
+find. It does not redirect or move browser data between origins.
 
 Browser controls and the Quit screen offer **Export stored saves**. Quit the
 game and close other game tabs first to release the home writer lease. Export

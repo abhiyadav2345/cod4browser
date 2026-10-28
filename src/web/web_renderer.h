@@ -654,8 +654,10 @@ void WebRenderer_UnloadWorldResources();
 // Accepts the backend-neutral view command produced by the canonical renderer
 // frontend. This does not select or convert world geometry; that remains a
 // renderer-frontend responsibility and is deliberately separate from the
-// frozen bounded world-surface adapter.
-bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view);
+// frozen bounded world-surface adapter. On failure, failureReason receives a
+// static diagnostic string; successful submissions clear it.
+bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view,
+    const char **failureReason = nullptr);
 
 // Retains the canonical GfxWorld sky cubemap at the renderer/backend boundary.
 // The DB image identity remains canonical; only decoded face pixels and the

@@ -9267,8 +9267,14 @@ void SelectSpotShadowLights(
 }
 } // namespace
 
-bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
+bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view,
+    const char **failureReason)
 {
+    if (failureReason) *failureReason = nullptr;
+    const auto reject = [failureReason](const char *reason) {
+        if (failureReason) *failureReason = reason;
+        return false;
+    };
     // No previous view may supply world camera runs after a failed submission.
     g_renderer.worldCameraRanges.clear();
     for (auto &ranges : g_renderer.worldDynamicLightRanges) ranges.clear();
@@ -9276,17 +9282,17 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
         view.height == 0u || view.tanHalfFovX <= 0.0f ||
         view.tanHalfFovY <= 0.0f || view.localClientNum != 0)
     {
-        return false;
+        return reject("invalid viewport or field of view");
     }
 
     const float *const axis = &view.viewAxis[0][0];
     for (const float component : view.viewOrigin)
     {
-        if (!std::isfinite(component)) return false;
+        if (!std::isfinite(component)) return reject("non-finite camera origin");
     }
     for (std::size_t index = 0; index < 9u; ++index)
     {
-        if (!std::isfinite(axis[index])) return false;
+        if (!std::isfinite(axis[index])) return reject("non-finite camera axis");
     }
     const float *const viewProjection = &view.viewProjectionMatrix[0][0];
     const float *const depthHackViewProjection =
@@ -9294,31 +9300,32 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
     for (std::size_t index = 0; index < 16u; ++index)
     {
         if (!std::isfinite(viewProjection[index]) ||
-            !std::isfinite(depthHackViewProjection[index])) return false;
+            !std::isfinite(depthHackViewProjection[index]))
+            return reject("non-finite projection matrix");
     }
     if (!std::isfinite(view.tanHalfFovX) ||
         !std::isfinite(view.tanHalfFovY) || !std::isfinite(view.zNear) ||
         view.zNear <= 0.0f)
     {
-        return false;
+        return reject("invalid camera projection");
     }
     if (view.fogEnabled)
     {
         if (!std::isfinite(view.fogStart) ||
             !std::isfinite(view.fogDensity) || view.fogDensity <= 0.0f)
         {
-            return false;
+            return reject("invalid fog parameters");
         }
         for (const float component : view.fogColor)
         {
-            if (!std::isfinite(component)) return false;
+            if (!std::isfinite(component)) return reject("non-finite fog color");
         }
     }
     if (!std::isfinite(view.blurRadius) || view.blurRadius < 0.0f ||
         !std::isfinite(view.depthHackZNear) || view.depthHackZNear <= 0.0f ||
         !WebRenderer_ValidateDepthOfFieldSettings(view.depthOfField))
     {
-        return false;
+        return reject("invalid blur or depth of field");
     }
     if (!std::isfinite(view.glowBloomCutoff) ||
         !std::isfinite(view.glowBloomCutoffRescale) ||
@@ -9335,7 +9342,7 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
              view.glowBloomCutoffRescale <= 0.0f ||
              view.glowBloomIntensity <= 0.0f || view.glowRadius <= 0.0f)))
     {
-        return false;
+        return reject("invalid glow parameters");
     }
     if (view.sunShadowEnabled)
     {
@@ -9346,7 +9353,7 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
                 !std::isfinite(view.worldMins[component]) ||
                 !std::isfinite(view.worldMaxs[component]) ||
                 view.worldMins[component] > view.worldMaxs[component])
-                return false;
+                return reject("invalid sun or world bounds");
         }
     }
     for (std::size_t channel = 0u; channel < 4u; ++channel)
@@ -9354,21 +9361,22 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
         if (!std::isfinite(view.colorBias[channel]) ||
             !std::isfinite(view.colorTintBase[channel]) ||
             !std::isfinite(view.colorTintDelta[channel]))
-            return false;
+            return reject("non-finite film color");
     }
     if (view.geometrySubmitted &&
         (view.worldSurfaceCount == 0u || view.worldVertexCount == 0u ||
          view.worldIndexCount == 0u || !g_renderer.surfaceActive ||
          g_renderer.surfaceSubmissionGeneration == 0u))
     {
-        return false;
+        return reject("missing retained world geometry");
     }
+    const char *primaryLightFailure = nullptr;
     if (!WebRenderer_ValidatePrimaryLightFrame(
-            view.primaryLights, view.primaryLightCount) ||
-        view.primaryLightCount != g_renderer.retainedPrimaryLights.size())
-    {
-        return false;
-    }
+            view.primaryLights, view.primaryLightCount, &primaryLightFailure))
+        return reject(primaryLightFailure
+            ? primaryLightFailure : "invalid primary light frame");
+    if (view.primaryLightCount != g_renderer.retainedPrimaryLights.size())
+        return reject("retained primary light count mismatch");
     for (std::uint32_t index = 0u;
          index < view.primaryLightCount; ++index)
     {
@@ -9379,7 +9387,8 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
         // Primary-light type and attenuation definition are authored world
         // identity. Cgame animates the other GfxLight fields, and native picks
         // the material technique from the same stable indexed light.
-        if (source.type != destination.type) return false;
+        if (source.type != destination.type)
+            return reject("primary light type changed");
         destination.exponent = source.exponent;
         destination.canUseShadowMap = source.canUseShadowMap != 0u;
         destination.radius = source.radius;
@@ -9392,33 +9401,39 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
         std::copy_n(source.origin, 3u, destination.origin);
     }
 
-    if (view.dynamicLightCount > g_renderer.dynamicLights.size() ||
-        (view.dynamicLightCount && (!view.dynamicLights || !view.dynamicLightAttenuation)))
-        return false;
+    if (view.dynamicLightCount > g_renderer.dynamicLights.size())
+        return reject("dynamic light count exceeds renderer capacity");
+    if (view.dynamicLightCount && !view.dynamicLights)
+        return reject("missing dynamic light list");
+    if (view.dynamicLightCount && !view.dynamicLightAttenuation)
+        return reject("missing dynamic light attenuation image");
     for (std::uint32_t index = 0; index < view.dynamicLightCount; ++index)
     {
-        if (!view.dynamicLights[index]) return false;
+        if (!view.dynamicLights[index])
+            return reject("missing dynamic light");
         const auto &light = *view.dynamicLights[index];
         if ((light.type != 2 && light.type != 3) || !light.def ||
             !std::isfinite(light.radius) || light.radius <= 0 ||
             (light.type == 2 && (!std::isfinite(light.cosHalfFovInner) ||
                 !std::isfinite(light.cosHalfFovOuter) ||
-                light.cosHalfFovInner <= light.cosHalfFovOuter))) return false;
+                light.cosHalfFovInner <= light.cosHalfFovOuter)))
+            return reject("invalid dynamic light geometry");
         for (int axis = 0; axis < 3; ++axis)
             if (!std::isfinite(light.origin[axis]) || !std::isfinite(light.color[axis]) ||
-                !std::isfinite(light.dir[axis])) return false;
+                !std::isfinite(light.dir[axis]))
+                return reject("non-finite dynamic light");
     }
     if (view.dynamicSpotLightIndex != UINT32_MAX)
     {
         if (view.dynamicSpotLightIndex >= view.dynamicLightCount ||
             !std::isfinite(view.dynamicSpotLightNearPlaneOffset) ||
             view.dynamicSpotLightNearPlaneOffset < 0.0f)
-            return false;
+            return reject("invalid dynamic spotlight index or near plane");
         const GfxLight &spot =
             *view.dynamicLights[view.dynamicSpotLightIndex];
         if (spot.type != 2u || !spot.canUseShadowMap ||
             !(1.0f + view.dynamicSpotLightNearPlaneOffset < spot.radius))
-            return false;
+            return reject("invalid dynamic spotlight shadow");
     }
     if (view.dynamicLightCount && g_renderer.dynamicLightAttenuationIdentity != view.dynamicLightAttenuation)
     {
@@ -9426,7 +9441,8 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
         const auto index = RetainCanonicalWorldImage(view.dynamicLightAttenuation,
             g_renderer.retainedWorldImages, bytes);
         if (index == INVALID_WORLD_IMAGE || !g_renderer.retainedWorldImages[index].supported ||
-            (!g_renderer.contextLost && !CreateWorldTextureObjects(g_renderer.retainedWorldImages))) return false;
+            (!g_renderer.contextLost && !CreateWorldTextureObjects(g_renderer.retainedWorldImages)))
+            return reject("dynamic light attenuation image unavailable");
         g_renderer.dynamicLightAttenuationIndex = index;
         g_renderer.dynamicLightAttenuationIdentity = view.dynamicLightAttenuation;
     }
@@ -9438,7 +9454,8 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
         view.dynamicSpotLightNearPlaneOffset;
 
     if (view.staticModelVisibilityComputed && view.staticModelVisibilityCount &&
-        !view.staticModelVisibility) return false;
+        !view.staticModelVisibility)
+        return reject("missing static model visibility");
     const std::size_t visibilityCount = view.staticModelVisibilityComputed
         ? view.staticModelVisibilityCount : 0u;
     const bool visibilityChanged =
@@ -9455,7 +9472,9 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
                 std::copy_n(view.staticModelVisibility, visibilityCount,
                     g_renderer.staticModelVisibility.begin());
         }
-        catch (const std::bad_alloc &) { return false; }
+        catch (const std::bad_alloc &) {
+            return reject("static model visibility allocation failed");
+        }
         g_renderer.staticModelVisibilityComputed = view.staticModelVisibilityComputed;
         g_renderer.staticModelVisibilityChanged = true;
     }
@@ -9464,7 +9483,7 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
          !WebRenderer_BuildWorldCameraRanges(g_renderer.retainedWorldSurfaceRanges,
             view.worldSurfaceVisibility, view.worldSurfaceVisibilityCount,
             view.worldSurfaceVisibilityComputed, g_renderer.worldCameraRanges)))
-        return false;
+        return reject("invalid world camera visibility ranges");
     for (unsigned i = 0; i < g_renderer.worldDynamicLightRanges.size(); ++i)
     {
         auto &ranges = g_renderer.worldDynamicLightRanges[i];
@@ -9473,7 +9492,8 @@ bool WebRenderer_SubmitSceneView(const WebRendererSceneViewDesc &view)
             !WebRenderer_BuildWorldCameraRanges(g_renderer.retainedWorldSurfaceRanges,
                 view.worldSurfaceVisibility, view.worldSurfaceVisibilityCount,
                 view.worldSurfaceVisibilityComputed, ranges, view.dynamicLights[i],
-                view.dynamicSpotLightNearPlaneOffset)) return false;
+                view.dynamicSpotLightNearPlaneOffset))
+            return reject("invalid dynamic light visibility ranges");
     }
     const bool worldChanged = g_renderer.sceneViewWorldName != view.worldName;
     ++g_renderer.sceneViewSubmissionGeneration;

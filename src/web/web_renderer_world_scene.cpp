@@ -39,12 +39,18 @@ void UnpackUnitVec(PackedUnitVec packed, float output[3]) noexcept
 
 bool ValidatePrimaryLightFrame(
     const WebRendererPrimaryLightDesc *primaryLights,
-    std::uint32_t primaryLightCount) noexcept
+    std::uint32_t primaryLightCount,
+    const char **failureReason) noexcept
 {
+    if (failureReason) *failureReason = nullptr;
+    const auto reject = [failureReason](const char *reason) {
+        if (failureReason) *failureReason = reason;
+        return false;
+    };
     if (primaryLightCount > WEB_RENDERER_MAX_PRIMARY_LIGHTS ||
         (primaryLightCount == 0u) != (primaryLights == nullptr))
     {
-        return false;
+        return reject("invalid primary light count or list");
     }
     for (std::uint32_t index = 0u; index < primaryLightCount; ++index)
     {
@@ -55,7 +61,7 @@ bool ValidatePrimaryLightFrame(
             !std::isfinite(light.falloffScale) ||
             !std::isfinite(light.falloffShift))
         {
-            return false;
+            return reject("invalid primary light type or scalar");
         }
         for (std::size_t component = 0u; component < 3u; ++component)
         {
@@ -63,7 +69,7 @@ bool ValidatePrimaryLightFrame(
                 !std::isfinite(light.direction[component]) ||
                 !std::isfinite(light.origin[component]))
             {
-                return false;
+                return reject("non-finite primary light vector");
             }
         }
         const bool localLight = light.type == 2u || light.type == 3u;
@@ -74,7 +80,7 @@ bool ValidatePrimaryLightFrame(
             (light.type == 2u &&
                 light.cosHalfFovInner <= light.cosHalfFovOuter))
         {
-            return false;
+            return reject("invalid primary light radius, falloff or cone");
         }
     }
     return true;
@@ -616,9 +622,11 @@ bool BatchMatches(
 
 bool WebRenderer_ValidatePrimaryLightFrame(
     const WebRendererPrimaryLightDesc *primaryLights,
-    std::uint32_t primaryLightCount) noexcept
+    std::uint32_t primaryLightCount,
+    const char **failureReason) noexcept
 {
-    return ValidatePrimaryLightFrame(primaryLights, primaryLightCount);
+    return ValidatePrimaryLightFrame(primaryLights, primaryLightCount,
+        failureReason);
 }
 
 WebRendererWorldSceneResult WebRenderer_BuildWorldSceneCommand(

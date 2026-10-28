@@ -265,7 +265,7 @@ actor_think_result_t __cdecl Actor_Turret_PostThink(actor_s *self)
 
     // Current turret yaw, and the gun height the AI needs to reach.
     mat3x3 tagWeaponAxis;
-    LocalConvertQuatToMat(tagWeaponMtx, tagWeaponAxis);
+    LocalConvertQuatToMat(tagWeaponMtx, tagWeaponAxis, "Actor_Turret_PostThink");
     float fTurretYaw = vectosignedyaw(tagWeaponAxis[0]);
 
     iassert(ent->tagInfo);

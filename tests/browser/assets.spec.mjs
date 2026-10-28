@@ -177,7 +177,10 @@ test("imports synthetic files through the portable picker and restores them afte
 test("uses the native directory picker boundary and admits German SP fastfiles and movies", async ({ page }, testInfo) => {
     const directory = await createInstallDirectory(testInfo, "native-picker-install", { language: "german" });
     const fastfileBytes = Array.from(createSyntheticFastfileHeader());
-    const descriptors = await Promise.all(getRequiredAssets("german").map(async (requirement) => ({
+    const descriptors = await Promise.all([
+        ...getRequiredAssets("german"),
+        ...getOptionalBaseAssets(),
+    ].map(async (requirement) => ({
         path: requirement.path,
         kind: requirement.kind,
         bytes: Array.from(await readFile(path.join(directory, requirement.path))),

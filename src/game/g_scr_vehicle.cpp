@@ -28,6 +28,10 @@
 
 #include "bullet.h"
 #include <universal/surfaceflags.h>
+#if defined(KISAK_WEB)
+#include <web/web_system.h>
+#include <cmath>
+#endif
 
 vehicle_info_t s_vehicleInfos[32];
 VehicleLocalPhysics s_phys;
@@ -1085,9 +1089,21 @@ void __cdecl VEH_UpdateAim(gentity_s *ent)
             tgtEnt = &g_entities[veh->targetEnt];
             Vec3Add(tgtEnt->r.currentOrigin, veh->targetOffset, tgtPos);
         }
+#if defined(KISAK_WEB)
+        if (!std::isfinite(tgtPos[0]) || !std::isfinite(tgtPos[1]) || !std::isfinite(tgtPos[2]))
+            Web_Log(WebLogLevel::Error,
+                "Vehicle aim target non-finite: entity=%d target=%d pos=(%g,%g,%g)\n",
+                ent->s.number, veh->targetEnt, tgtPos[0], tgtPos[1], tgtPos[2]);
+#endif
         if (veh->boneIndex.barrel >= 0)
         {
             G_DObjGetWorldBoneIndexPos(ent, veh->boneIndex.barrel, barrelPos);
+#if defined(KISAK_WEB)
+            if (!std::isfinite(barrelPos[0]) || !std::isfinite(barrelPos[1]) || !std::isfinite(barrelPos[2]))
+                Web_Log(WebLogLevel::Error,
+                    "Vehicle aim barrel non-finite: entity=%d bone=%d pos=(%g,%g,%g)\n",
+                    ent->s.number, veh->boneIndex.barrel, barrelPos[0], barrelPos[1], barrelPos[2]);
+#endif
             if (veh->boneIndex.turret_base == -1)
             {
                 angles[0] = veh->phys.angles[0];
@@ -1124,6 +1140,15 @@ void __cdecl VEH_UpdateAim(gentity_s *ent)
             MatrixTranspose(mtx, invMtx);
             MatrixMultiply(axis, invMtx, mtx);
             AxisToAngles(mtx, tgtAngles);
+#if defined(KISAK_WEB)
+            if (!std::isfinite(tgtAngles[0]) || !std::isfinite(tgtAngles[1]) || !std::isfinite(tgtAngles[2])
+                || !std::isfinite(ent->s.lerp.u.vehicle.gunPitch) || !std::isfinite(ent->s.lerp.u.vehicle.gunYaw))
+                Web_Log(WebLogLevel::Error,
+                    "Vehicle aim angle non-finite: entity=%d target=(%g,%g,%g) previous=(%g,%g) origin=(%g,%g,%g)\n",
+                    ent->s.number, tgtAngles[0], tgtAngles[1], tgtAngles[2],
+                    ent->s.lerp.u.vehicle.gunPitch, ent->s.lerp.u.vehicle.gunYaw,
+                    ent->r.currentOrigin[0], ent->r.currentOrigin[1], ent->r.currentOrigin[2]);
+#endif
             prevAngles[0] = ent->s.lerp.u.vehicle.gunPitch;
             prevAngles[1] = ent->s.lerp.u.vehicle.gunYaw;
             prevAngles[2] = 0.0f;
@@ -1138,6 +1163,14 @@ void __cdecl VEH_UpdateAim(gentity_s *ent)
                 info->turretRotRate,
                 0.05f);
             ent->s.lerp.u.vehicle.gunYaw = LinearTrackAngle(tgtAngles[1], prevAngles[1], info->turretRotRate, 0.05f);
+#if defined(KISAK_WEB)
+            if (!std::isfinite(ent->s.lerp.u.vehicle.gunPitch) || !std::isfinite(ent->s.lerp.u.vehicle.gunYaw))
+                Web_Log(WebLogLevel::Error,
+                    "Vehicle tracked angle non-finite: entity=%d rate=%g target=(%g,%g) previous=(%g,%g) result=(%g,%g)\n",
+                    ent->s.number, info->turretRotRate, tgtAngles[0], tgtAngles[1],
+                    prevAngles[0], prevAngles[1],
+                    ent->s.lerp.u.vehicle.gunPitch, ent->s.lerp.u.vehicle.gunYaw);
+#endif
             stopAngles[0] = ent->s.lerp.u.vehicle.gunPitch;
             stopAngles[1] = ent->s.lerp.u.vehicle.gunYaw;
             stopAngles[2] = 0.0f;
@@ -6050,6 +6083,14 @@ void Scr_Vehicle_Controller(const gentity_s *pSelf, int *partBits)
     v10[2] = 0.0;
     v11[1] = 0.0;
     v11[2] = 0.0;
+#if defined(KISAK_WEB)
+    if (!std::isfinite(v9[0]) || !std::isfinite(v9[2])
+        || !std::isfinite(v10[1]) || !std::isfinite(v11[0]))
+        Web_Log(WebLogLevel::Error,
+            "Vehicle controller angles non-finite: entity=%d model=%s body=(%g,%g) turret=%g barrel=%g bones=(%d,%d,%d)\n",
+            pSelf->s.number, DObjGetName(obj), v9[0], v9[2], v10[1], v11[0],
+            body, scr_vehicle->boneIndex.turret, scr_vehicle->boneIndex.barrel);
+#endif
     turret = scr_vehicle->boneIndex.turret;
     if (turret >= 0)
         DObjSetLocalBoneIndex(obj, partBits, turret, vec3_origin, v10);
